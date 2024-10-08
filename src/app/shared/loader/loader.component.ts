@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { LoaderService } from './loader.service';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-loader',
@@ -12,13 +13,21 @@ import { LoaderService } from './loader.service';
 })
 export class LoaderComponent implements OnInit {
   public loaderVisible: boolean = false;
+  private destroy$ = new Subject<void>();
 
   constructor(private loaderService: LoaderService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
-    this.loaderService.loaderVisible$.subscribe((isVisible) => {
-      this.loaderVisible = isVisible;
-      this.cdr.detectChanges();
-    });
+    this.loaderService.loaderVisible$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((isVisible: boolean) => {
+        this.loaderVisible = isVisible;
+        this.cdr.detectChanges();
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
