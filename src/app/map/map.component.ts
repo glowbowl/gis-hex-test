@@ -33,45 +33,54 @@ export class MapComponent implements OnInit {
     console.log(convertedDataGeo.features[0].geometry.coordinates[0][0][0]);
   }
 
-  private transformDataToHexs(convertedDataGeo: any): any {
-    const h3SetsArray: string[][] = [];
+  private transformDataToHexs(convertedDataGeo: any) {
+    const h3SetsArray: { title: any; tileColor: any; h3Set: string[]; hexBounds: CoordPair[][]; }[] = [];
 
     convertedDataGeo.features.forEach(
       (feature: Feature<Geometry, GeoJsonProperties>) => {
-        h3SetsArray.push(geojson2h3.featureToH3Set(feature, 3));
+        h3SetsArray.push(
+          {
+            title: feature!.properties!['ID'],
+            tileColor: feature!.properties!['COLOR_HEX'],
+            h3Set: geojson2h3.featureToH3Set(feature, 4),
+            hexBounds: [],
+          }
+        );
       }
     );
 
-    const hexBoundsArray: CoordPair[][] = [];
-
-    h3SetsArray.forEach((set) => {
-      set.forEach((hex) => {
-        hexBoundsArray.push(cellToBoundary(hex));
+    h3SetsArray.forEach((setObject) => {
+      setObject.h3Set.forEach((hex) => {
+        setObject.hexBounds.push(cellToBoundary(hex));
       });
     });
-    console.log(hexBoundsArray);
+
+    console.log(h3SetsArray);
+    return h3SetsArray
   }
 
   private initMapOpts(hexLayers: any): void {
     this.options = {
       layers: this.getLayers(hexLayers),
-      zoom: 4,
+      zoom: 6,
       center: new Leaflet.LatLng(21.804, 38.353),
     };
   }
 
   private getLayers(hexLayers: any): Leaflet.Layer[] {
     const polygonsArray = hexLayers.map((hex: any) => {
-      return new Leaflet.Polygon(hex).setStyle({
-        fillColor: '#FF5722',
+      return new Leaflet.Polygon(hex.hexBounds).setStyle({
+        fillColor: '#' + hex.tileColor,
+        fillOpacity: 0.6,
         color: '#000000',
-      });
+      }).bindTooltip('Id:' + hex.title);
     });
     return [
       new Leaflet.TileLayer(
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
-          maxZoom: 12,
+          maxZoom: 8,
+          minZoom: 6,
           attribution: '&copy; OpenStreetMap contributors',
         } as Leaflet.TileLayerOptions
       ),
